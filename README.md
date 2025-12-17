@@ -5,7 +5,7 @@ End-to-end revenue diagnostics using SQL &amp; Python to analyze trends, growth,
 The project focuses on answering a core business question:
  
   
-  **Why did revenue change over time?**
+ - **Why did revenue change over time?**
 
 
 Using SQL and Python, the analysis explores revenue trends, growth metrics, seasonality, and volatility, and converts findings into actionable business insights.
