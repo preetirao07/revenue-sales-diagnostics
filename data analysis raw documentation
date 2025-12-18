@@ -1,0 +1,80 @@
+# Data Analysis – Raw Documentation
+
+This file documents the raw steps, decisions, challenges, and fixes applied while working on the Amazon sales dataset.  
+The goal is to maintain full transparency of the analytical workflow, from raw data ingestion to analysis-ready data.
+
+---
+
+## 1. Dataset Overview
+
+- Source: Kaggle (Amazon Sales Data)
+- Total rows: 128,975
+- Total columns: 23
+- Domain: E-commerce / Sales Analytics
+
+The dataset includes order details, fulfillment information, product attributes, shipment data, and revenue-related fields.
+
+---
+
+## 2. Initial Data Ingestion
+
+The dataset was loaded into **Excel Power Query** to perform initial cleaning and transformation.  
+Power Query was chosen to ensure:
+- Reproducibility of transformations
+- Scalability for large datasets
+- Clear documentation of data cleaning steps
+
+---
+
+## 3. Column Review & Type Correction
+
+Each column was reviewed individually and converted to its appropriate data type based on business meaning:
+- Text fields: product details, identifiers, location attributes
+- Numeric fields: quantity, amount
+- Boolean fields: B2B flag, holiday indicator
+- Date fields: order date
+
+Most columns were corrected using standard Power Query transformations.
+
+---
+
+## 4. Date Column Issue
+
+### Problem
+The `Date` column was originally stored as **text** in the format **MM-DD-YY**.  
+Direct conversion to a date type resulted in errors due to locale interpretation limitations in the Excel version being used.
+
+---
+
+### Resolution
+A custom column was created to explicitly parse the text-based date:
+
+```m
+= try Date.FromText([Date], "en-US") otherwise null
+
+---
+
+## 9. Loading Data into PostgreSQL
+
+After completing all transformations in Power Query, the cleaned dataset was converted into an **Excel Table** to preserve schema consistency and structured formatting.
+
+The Excel table was then loaded into **PostgreSQL** using the **Import/Export Data** feature. This approach ensured:
+- Accurate column-to-type mapping
+- Preservation of cleaned date and numeric fields
+- Efficient transfer of a large dataset (128,975 rows)
+
+During the import process:
+- Appropriate SQL data types were assigned (TEXT, INTEGER, BOOLEAN, DATE)
+- Long or variable-length text fields were stored using TEXT
+- Numeric and date fields were validated post-import
+
+---
+
+## 10. Post-Load Validation in SQL
+
+After loading the table into PostgreSQL, basic validation checks were performed to confirm data integrity:
+- Row count verification against the source dataset
+- Date range validation to ensure correct parsing
+- Null checks on critical analytical columns (date, amount, quantity)
+
+The table was then deemed analysis-ready and used for SQL-based revenue trends, growth analysis, and downstream Python analytics.
