@@ -1,0 +1,42 @@
+Data Analysis – Raw Documentation (Amazon Sales Dataset)
+
+This document records the complete step-by-step analytical workflow applied to the Amazon sales dataset.
+It captures raw decisions, issues, fixes, and analytical reasoning, ensuring transparency, reproducibility, and clarity of thought from raw data to business insight.
+
+1. Dataset Overview
+
+Source: Kaggle – Amazon Sales Data
+
+Total Rows: 128,975
+
+Total Columns: 23
+
+Domain: E-commerce / Sales Analytics
+
+The dataset contains order-level data including:
+
+Order and fulfillment details
+
+Shipment and courier status
+
+Product attributes
+
+Geographic shipping information
+
+Revenue-related fields
+
+2. Initial Data Ingestion
+
+The raw CSV dataset was ingested using Excel Power Query.
+
+Why Power Query was chosen:
+
+Ensures reproducible transformations
+
+Handles large datasets efficiently
+
+Provides a step-by-step transformation log
+
+Easy schema validation before database loading
+
+This stage focused on making the data structurally clean before any SQL-based analysis.
