@@ -4,39 +4,167 @@ This document records the complete step-by-step analytical workflow applied to t
 It captures raw decisions, issues, fixes, and analytical reasoning, ensuring transparency, reproducibility, and clarity of thought from raw data to business insight.
 
 1. Dataset Overview
-
-Source: Kaggle – Amazon Sales Data
-
-Total Rows: 128,975
-
-Total Columns: 23
-
-Domain: E-commerce / Sales Analytics
-
-The dataset contains order-level data including:
-
-Order and fulfillment details
-
-Shipment and courier status
-
-Product attributes
-
-Geographic shipping information
-
-Revenue-related fields
+  - Source: Kaggle – Amazon Sales Data
+  - Total Rows: 128,975
+  - Total Columns: 23
+  - Domain: E-commerce / Sales Analytics
+  - The dataset contains order-level data including:
+  - Order and fulfillment details
+  - Shipment and courier status
+  - Product attributes
+  - Geographic shipping information
+  - Revenue-related fields
 
 2. Initial Data Ingestion
-
 The raw CSV dataset was ingested using Excel Power Query.
-
 Why Power Query was chosen:
-
-Ensures reproducible transformations
-
-Handles large datasets efficiently
-
-Provides a step-by-step transformation log
-
-Easy schema validation before database loading
+  - Ensures reproducible transformations
+  - Handles large datasets efficiently
+  - Provides a step-by-step transformation log
+  - Easy schema validation before database loading
 
 This stage focused on making the data structurally clean before any SQL-based analysis.
+
+3. Column Review & Data Type Correction
+Each column was reviewed individually and assigned a data type based on business meaning, not default inference.
+Type Mapping Decisions
+  - Text fields:
+    Product identifiers, fulfillment type, courier status, geographic fields
+  - Numeric fields:
+    qty, amount
+  - Boolean fields:
+    b2b
+  - Date fields:
+    order_date
+Standard Power Query transformations were applied to correct inconsistent or incorrectly inferred types.
+
+4. Date Column Issue
+The Date column was stored as TEXT in the format: MM-DD-YY
+Direct conversion to a Date type resulted in errors due to:
+  - Locale interpretation mismatch
+  - Excel version limitations
+This caused invalid or null date values during transformation.
+Resolution: A custom Power Query column was created to explicitly parse the date using the correct locale.
+custom col formula = try Date.FromText([Date], "en-US") otherwise null
+
+Result:
+  - Date parsing errors eliminated
+  - All valid dates converted correctly
+  - Invalid rows safely set to NULL
+  - This step was critical for reliable time-series analysis.
+
+5. Post-Cleaning Validation in Power Query
+  - Before exporting the dataset:
+  - Row count rechecked against original CSV
+  - Random sampling performed to validate:
+  - Date accuracy
+  - Amount and quantity fields
+  - No unintended row drops observed
+
+6. Preparing for Database Load
+After transformations:
+  - The cleaned dataset was converted into an Excel Table
+    This ensured:
+    - Schema consistency
+    - Stable column ordering
+    - Clean import into PostgreSQL
+
+7. Loading Data into PostgreSQL
+The Excel table was imported into PostgreSQL using the Import/Export Data feature.
+Import Decisions
+  - TEXT used for variable-length fields
+  - NUMERIC(10,2) used for revenue (amount)
+  - DATE for order_date
+  - BOOLEAN for b2b
+This approach ensured minimal post-load corrections.
+
+9. Post-Load Validation in SQL
+Validation checks performed after import using: select * from amazon_sales
+
+10. Revenue Analysis – Macro View
+Business Question: Is overall revenue growing or declining over time?
+  - Only delivered orders were considered to ensure realized revenue.
+
+Monthly Revenue Query: 
+    SELECT date_trunc('month', order_date) AS month, SUM(amount) AS total_revenue
+    FROM amazon_sales
+    WHERE status = 'Shipped - Delivered to Buyer'
+    GROUP BY 1
+    ORDER BY 1;
+
+11. Monthly Revenue Results (2022)
+Month	Revenue (₹): 
+    March	10,170
+    April	5,025,725
+    May	4,077,083
+    June	1,990,943
+
+12. Critical Data Validity Decision
+Excluding March from Trend Analysis
+Reasoning:
+    - ₹10k in March vs ₹50L in April
+    - Indicates partial / incomplete data
+    - Including March would distort trends
+
+March is excluded due to partial data.
+All trend analysis proceeds from April → June only.
+
+13. Month-over-Month (MoM) Revenue Analysis
+  April → May
+      Revenue Drop: ₹948,642
+      Percentage Drop: −18.9%
+
+  May → June
+      Revenue Drop: ₹2,086,140
+      Percentage Drop: −51.2%
+
+14. Analytical Interpretation
+Key observations:
+    - Revenue decline is non-linear
+    - Drop accelerates sharply in June
+    - Pattern rules out normal seasonality
+    - Indicates structural, operational, or demand-side shock
+
+Macro-Level Conclusions
+    - Revenue is clearly declining
+    - Decline is stepwise, not gradual
+    - June is the inflection point
+
+15. Analytical Question: What fundamentally changed in June compared to April–May?
+
+17. Order Volume Analysis – Delivered Orders (Month-wise)
+Objective: To determine whether the observed revenue decline is driven by:
+              Fewer orders being delivered (volume issue), or
+              Lower revenue per order (AOV issue)
+The first step was to analyze delivered order counts month-wise.
+Only successfully delivered orders were included to ensure alignment with realized revenue.
+Delivered Orders – SQL Query:
+    SELECT
+    COUNT(DISTINCT order_id) AS delivered_orders,
+    date_trunc('month', order_date) AS month
+FROM amazon_sales
+WHERE status = 'Shipped - Delivered to Buyer'
+GROUP BY month
+ORDER BY month;
+
+Delivered Orders – Results (2022)
+  Month	Delivered Orders
+  March    	16
+  April    	7,469
+  May      	5,610
+  June    	2,796
+
+Confirmation of Partial Data (March): March shows only 16 delivered orders. Confirms incomplete or missing data coverage
+
+Linking Order Volume to Revenue Decline
+
+Comparing revenue and order trends:
+Metric	            April → May	      May → June
+Revenue Drop	        −18.9%	          −51.2%
+Order Drop	          −24.9%	          −50.2%
+
+Interpretation:
+  - Revenue decline closely mirrors order volume decline
+  - Indicates primary driver = fewer delivered orders
+  - AOV changes (if any) are secondary
+
